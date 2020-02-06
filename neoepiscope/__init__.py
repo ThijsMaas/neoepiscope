@@ -466,7 +466,7 @@ def main():
                 info_path = os.path.join(args.dicts, "transcript_to_gene_info.pickle")
                 if os.path.isfile(info_path):
                     with open(info_path, "rb") as info_stream:
-                        info_dict = pickle.load(cds_stream)
+                        info_dict = pickle.load(info_stream)
                 else:
                     raise RuntimeError(
                         "".join(
