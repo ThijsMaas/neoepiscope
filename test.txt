@@ -1,0 +1,48 @@
+
+
+bam /data/bambino/scratch/t.maas/neogene/neogene-snv-docker/test/update_output/recal/tumor_neogene_1.bam
+
+
+
+extractHAIRS --indels 1 \
+    --bam /data/bambino/scratch/t.maas/neogene/neogene-snv-docker/test/update_output/recal/tumor_neogene_1.bam \
+    --VCF /data/bambino/scratch/t.maas/neogene/neogene-snv-docker/test/update_output/calls/merged_neogene_1_split.vcf \
+    --out /data/bambino/scratch/t.maas/neogene/neogene-snv-docker/test/update_output/calls/fragments_neogene_1_split \
+           && \
+       HAPCUT2  \
+           --fragments /data/bambino/scratch/t.maas/neogene/neogene-snv-docker/test/update_output/calls/fragments_neogene_1_split \
+           --VCF /data/bambino/scratch/t.maas/neogene/neogene-snv-docker/test/update_output/calls/merged_neogene_1_split.vcf \
+           --output /data/bambino/scratch/t.maas/neogene/neogene-snv-docker/test/update_output/calls/adjusted_haplotypes_neogene_1_split
+
+neoepiscope prep \
+            -v /home/t.maas/neogene/neogene-snv-docker/test/update_output/calls/merged_neogene_1.vcf \
+            -o test_haplotypes
+
+
+neoepiscope call     \
+-x /data/bambino/scratch/t.maas/neogene/neogene-snv-docker/reference/hg38/GRCh38.p13.genome.fa     \
+-d /data/bambino/scratch/t.maas/neogene/neogene-snv-docker/reference/hg38/     \
+-c /home/t.maas/neogene/neogene-snv-docker/test/update_output/epitopes/adjusted_haplotypes_neogene_1     \
+-v /home/t.maas/neogene/neogene-snv-docker/test/update_output/calls/somatic_neogene_1_filtered_split.vcf     \
+-o test_neo0     \
+--no-affinity     \
+--kmer-size 25
+
+neoepiscope call     \
+-x /data/bambino/scratch/t.maas/neogene/neogene-snv-docker/reference/hg38/GRCh38.p13.genome.fa     \
+-d /data/bambino/scratch/t.maas/neogene/neogene-snv-docker/reference/hg38/     \
+-c test/adjusted_haplotype     \
+-v test/test.vcf     \
+-o test_neo19     \
+--no-affinity     \
+--kmer-size 25
+
+neoepiscope call     \
+-x /data/bambino/scratch/t.maas/neogene/neogene-snv-docker/reference/hg38/GRCh38.p13.genome.fa     \
+-d /data/bambino/scratch/t.maas/neogene/neogene-snv-docker/reference/hg38/     \
+-c test/examples_haplotype     \
+-v test/examples.vcf     \
+-o test/examples_epitopes.tsv     \
+--no-affinity     \
+--kmer-size 25
+
