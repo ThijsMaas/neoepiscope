@@ -640,11 +640,9 @@ def write_results(output_file, hla_alleles, neoepitopes, tool_dict, tx_dict,
             "Transcript_type",
             "Gene_ID",
             "Gene_name",
-            "TPM",
-            "Variant_read_support",
-            "Variant_read_coverage",
-            "Percent_read_support",
-            "IEDB_ID"
+            "IEDB_ID",
+            "Count_in_normal",
+            # "Haplotype"
         ]
         for allele in hla_alleles:
             for tool in sorted(tool_dict.keys()):
@@ -653,6 +651,14 @@ def write_results(output_file, hla_alleles, neoepitopes, tool_dict, tx_dict,
         print("\t".join(headers), file=output_stream)
         # Write output for all epitopes
         for epitope in sorted(neoepitopes.keys()):
+            row = dict.fromkeys(headers, "NA")
+            row["Neoepitope"] = epitope
+        
+            # Get binding score info, not used at the moment
+            # ep_scores = []
+            # for i in range(9, len(neoepitopes[epitope][0])):
+            #     ep_scores.append(neoepitopes[epitope][0][i])
+
             # Find relevant IEDB IDs for epitope
             if epitope in epitope_to_iedb:
                 iedb_id = ",".join(list(epitope_to_iedb[epitope]))
@@ -665,166 +671,45 @@ def write_results(output_file, hla_alleles, neoepitopes, tool_dict, tx_dict,
                     iedb_id = ",".join(list(possible_ids))
                 else:
                     iedb_id = "NA"
-            if len(neoepitopes[epitope]) == 1:
-                # Epitope only results from 1 transcript - get variant info
-                mutation = neoepitopes[epitope][0]
+            mutation_dict = collections.defaultdict(list)
+            for m in neoepitopes[epitope]:
+                mutation_dict[(m[0:7])+(m[8],)].append([m[7], m[9]])
+            for mutation in mutation_dict:
+                row["Chromosome"] = mutation[0]
+                row["Pos"] = str(mutation[1])
                 if mutation[2] == "":
-                    ref = "*"
+                    row["Ref"] = "*"
                 else:
-                    ref = mutation[2]
+                    row["Ref"] = mutation[2]
                 if mutation[3] == "":
-                    alt = "*"
+                    row["Alt"] = "*"
                 else:
-                    alt = mutation[3]
+                    row["Alt"] = mutation[3]
+                row["Mutation_type"] = mutation[4]
                 if mutation[5] is None:
-                    vaf = "NA"
+                    row["VAF"] = "NA"
                 else:
-                    vaf = str(mutation[5])
-                # Get transcript/gene info
-                tx_info = tx_dict[mutation[8]]
-                # Get gene expression info
-                if tpm_dict is not None:
-                    try:
-                        # Search transcript TPM first
-                        tpm = tpm_dict[mutation[8]]
-                    except KeyError:
-                        tpm = 'NA'
-                    if tpm_threshold is not None:
-                        if tpm == 'NA':
-                            continue
-                        elif tpm < tpm_threshold:
-                            continue
-                else:
-                    tpm = "NA"
-                if expressed_variants is not None:
-                    reads_supporting_variant = expressed_variants[tuple(mutation[0:5])]
-                    reads_covering_variant = covered_variants[tuple(mutation[0:5])]
-                    try:
-                        percent_support = round(
-                            100*float(reads_supporting_variant)/float(reads_covering_variant),
-                            3
-                        )
-                    except ZeroDivisionError:
-                        percent_support = 'NA'
-                else:
-                    reads_supporting_variant = 'NA'
-                    reads_covering_variant = 'NA'
-                    percent_support = 'NA'
-                out_line = [
-                    epitope,
-                    mutation[0],
-                    str(mutation[1]),
-                    ref,
-                    alt,
-                    mutation[4],
-                    vaf,
-                    mutation[6],
-                    mutation[7],
-                    mutation[8],
-                    tx_info[0],
-                    tx_info[1],
-                    tx_info[2],
-                    str(tpm),
-                    str(reads_supporting_variant),
-                    str(reads_covering_variant),
-                    str(percent_support),
-                    iedb_id
-                ]
-                for i in range(9, len(mutation)):
-                    out_line.append(str(mutation[i]))
-                print("\t".join(out_line), file=output_stream)
-            else:
-                # Epitope results from multiple transcripts
-                mutation_dict = collections.defaultdict(list)
-                # Get binding score info
-                ep_scores = []
-                for i in range(9, len(neoepitopes[epitope][0])):
-                    ep_scores.append(neoepitopes[epitope][0][i])
-                # Get variant info
-                for mut in neoepitopes[epitope]:
-                    if mut[2] == "":
-                        ref = "*"
-                    else:
-                        ref = mut[2]
-                    if mut[3] == "":
-                        alt = "*"
-                    else:
-                        alt = mut[3]
-                    if mut[5] is None:
-                        vaf = "NA"
-                    else:
-                        vaf = str(mut[5])
-                    if expressed_variants is not None:
-                        reads_supporting_variant = expressed_variants[tuple(mut[0:5])]
-                        reads_covering_variant = covered_variants[tuple(mut[0:5])]
-                        try:
-                            percent_support = round(
-                                100*float(reads_supporting_variant)/float(reads_covering_variant),
-                                3
-                            )
-                        except ZeroDivisionError:
-                            percent_support = 'NA'
-                    else:
-                        reads_supporting_variant = 'NA'
-                        reads_covering_variant = 'NA'
-                        percent_support = 'NA'
-                    mutation_dict[
-                        (mut[0], mut[1], ref, alt, mut[4], vaf, mut[6], 
-                         reads_supporting_variant, reads_covering_variant, percent_support)
-                    ].append([mut[7], mut[8]])
-                mutation_list = sorted(list(mutation_dict.keys()))
-                # Get transcript/gene info 
-                for mut in mutation_list:
-                    transcripts = [str(x[1]) for x in mutation_dict[mut]]
-                    tx_types = []
-                    gene_ids = []
-                    gene_names = []
-                    tpm_values = []
-                    expressed = False
-                    # Get transcript/gene info
-                    for tx in transcripts:
-                        tx_types.append(tx_dict[tx][0])
-                        gene_ids.append(tx_dict[tx][1])
-                        gene_names.append(tx_dict[tx][2])
-                        # Get gene expression info
-                        if tpm_dict is not None:
-                            try:
-                                # Try transcript TPM first
-                                tpm = tpm_dict[tx]
-                                if tpm_threshold is not None:
-                                    if tpm >= tpm_threshold:
-                                        expressed = True
-                            except KeyError:
-                                tpm = 'NA'
-                            tpm_values.append(tpm)
-                        else:
-                            tpm_values.append('NA')
-                    # If no gene for mutation is expressed, filter out
-                    if tpm_threshold is not None and not expressed:
-                        continue
-                    out_line = [
-                        epitope,
-                        mut[0],
-                        str(mut[1]),
-                        mut[2],
-                        mut[3],
-                        mut[4],
-                        mut[5],
-                        mut[6],
-                        ";".join([str(x[0]) for x in mutation_dict[mut]]),
-                        ";".join(transcripts),
-                        ";".join(tx_types),
-                        ";".join(gene_ids),
-                        ";".join(gene_names),
-                        ";".join([str(x) for x in tpm_values]),
-                        str(mut[7]),
-                        str(mut[8]),
-                        str(mut[9]),
-                        iedb_id
-                    ]
-                    for score in ep_scores:
-                        out_line.append(str(score))
-                    print("\t".join(out_line), file=output_stream)
+                    row["VAF"] = str(mutation[5])
+                row["Paired_normal_epitope"] = mutation[6]
+                row["Warnings"] = ';'.join([extra[0] for extra in mutation_dict[mutation]])
+                row["Count_in_normal"] = mutation[7]
+                # row["Haplotype"] = mutation[9]
+
+                # Add transcript data
+                transcripts =  [extra[1] for extra in mutation_dict[mutation]]
+                tx_types = []
+                gene_ids = []
+                gene_names = []
+                for tx in transcripts:
+                    tx_types.append(tx_dict[tx][0])
+                    gene_ids.append(tx_dict[tx][1])
+                    gene_names.append(tx_dict[tx][2])
+                row["Transcript_ID"] = ';'.join(transcripts)
+                row["Transcript_type"] = ';'.join(tx_types)
+                row["Gene_ID"] = ';'.join(gene_ids)
+                row["Gene_name"] = ';'.join(gene_names)
+
+                print(*[row[col] for col in headers], sep="\t", file=output_stream)
     finally:
         if output_stream is not sys.stdout:
             output_stream.close()

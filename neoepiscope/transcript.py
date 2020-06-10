@@ -2542,6 +2542,8 @@ class Transcript(object):
                     ]
                 )
             for coords in epitope_coords:
+                # Added mutated haploype for neopitope
+                # mut_haplotype = protein[coords[0] : coords[1]]
                 peptides = kmerize_peptide(
                     protein[coords[0] : coords[1]], min_size=size, max_size=size
                 )
@@ -2554,25 +2556,26 @@ class Transcript(object):
                     else:
                         peptide_pairs = zip(peptides, ['NA' for j in range(0, len(peptides))])
                     for pair in peptide_pairs:
-                        if pair[0] not in peptides_ref:
-                            if len(coords[4]) == 2 and type(coords[4][0]) == list:
-                                # Dealing with peptide resulting from hybrid interval
-                                data_set = coords[4][0][4]
+                        if len(coords[4]) == 2 and type(coords[4][0]) == list:
+                            # Dealing with peptide resulting from hybrid interval
+                            data_set = coords[4][0][4]
+                        else:
+                            # Dealing with regular peptide
+                            data_set = coords[4]
+                        for mutation_data in data_set:
+                            if unknown_aa and '?' in pair[0] or '?' in pair[1]:
+                                mutation_data = (
+                                    mutation_data + (pair[1],) + (';'.join([transcript_warnings[0], 
+                                                                            'unknown_amino_acid']),)
+                            )
                             else:
-                                # Dealing with regular peptide
-                                data_set = coords[4]
-                            for mutation_data in data_set:
-                                if unknown_aa and '?' in pair[0] or '?' in pair[1]:
-                                    mutation_data = (
-                                        mutation_data + (pair[1],) + (';'.join([transcript_warnings[0], 
-                                                                                'unknown_amino_acid']),)
+                                mutation_data = (
+                                    mutation_data + (pair[1],) + transcript_warnings
                                 )
-                                else:
-                                    mutation_data = (
-                                        mutation_data + (pair[1],) + transcript_warnings
-                                    )
-                                peptide_seqs[pair[0]].append(mutation_data)
-                            peptide_seqs[pair[0]] = list(set(peptide_seqs[pair[0]]))
+                            # Added uniqueness parameter for neoepitope
+                            mutation_data = mutation_data + (peptides_ref.count(pair[0]), )
+                            peptide_seqs[pair[0]].append(mutation_data)
+                        peptide_seqs[pair[0]] = list(set(peptide_seqs[pair[0]]))
                 else:
                     peptides = list(set(peptides).difference(peptides_ref))
                     for pep in peptides:
@@ -2592,6 +2595,8 @@ class Transcript(object):
                                 mutation_data = (
                                     mutation_data + ("NA",) + transcript_warnings
                                 )
+                            # Added uniqueness parameter for neoepitope
+                            mutation_data = mutation_data + (peptides_ref.count(pep), )
                             peptide_seqs[pep].append(mutation_data)
                         peptide_seqs[pep] = list(set(peptide_seqs[pep]))
         if not return_protein:
