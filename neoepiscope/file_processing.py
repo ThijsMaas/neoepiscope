@@ -632,7 +632,9 @@ def write_results(output_file, hla_alleles, neoepitopes, tool_dict, tx_dict):
             "Transcript_type",
             "Gene_ID",
             "Gene_name",
-            "IEDB_ID"
+            "IEDB_ID",
+            "Count_in_normal",
+            # "Haplotype"
         ]
         for allele in hla_alleles:
             for tool in sorted(tool_dict.keys()):
@@ -641,6 +643,14 @@ def write_results(output_file, hla_alleles, neoepitopes, tool_dict, tx_dict):
         print("\t".join(headers), file=output_stream)
         # Write output for all epitopes
         for epitope in sorted(neoepitopes.keys()):
+            row = dict.fromkeys(headers, "NA")
+            row["Neoepitope"] = epitope
+        
+            # Get binding score info, not used at the moment
+            # ep_scores = []
+            # for i in range(9, len(neoepitopes[epitope][0])):
+            #     ep_scores.append(neoepitopes[epitope][0][i])
+
             # Find relevant IEDB IDs for epitope
             if epitope in epitope_to_iedb:
                 iedb_id = ",".join(list(epitope_to_iedb[epitope]))
@@ -653,96 +663,45 @@ def write_results(output_file, hla_alleles, neoepitopes, tool_dict, tx_dict):
                     iedb_id = ",".join(list(possible_ids))
                 else:
                     iedb_id = "NA"
-            if len(neoepitopes[epitope]) == 1:
-                # Epitope only results from 1 transcript - get variant info
-                mutation = neoepitopes[epitope][0]
+            mutation_dict = collections.defaultdict(list)
+            for m in neoepitopes[epitope]:
+                mutation_dict[(m[0:7])+(m[8],)].append([m[7], m[9]])
+            for mutation in mutation_dict:
+                row["Chromosome"] = mutation[0]
+                row["Pos"] = str(mutation[1])
                 if mutation[2] == "":
-                    ref = "*"
+                    row["Ref"] = "*"
                 else:
-                    ref = mutation[2]
+                    row["Ref"] = mutation[2]
                 if mutation[3] == "":
-                    alt = "*"
+                    row["Alt"] = "*"
                 else:
-                    alt = mutation[3]
+                    row["Alt"] = mutation[3]
+                row["Mutation_type"] = mutation[4]
                 if mutation[5] is None:
-                    vaf = "NA"
+                    row["VAF"] = "NA"
                 else:
-                    vaf = str(mutation[5])
-                # Get transcript/gene info
-                tx_info = tx_dict[mutation[8]]
-                out_line = [
-                    epitope,
-                    mutation[0],
-                    str(mutation[1]),
-                    ref,
-                    alt,
-                    mutation[4],
-                    vaf,
-                    mutation[6],
-                    mutation[7],
-                    mutation[8],
-                    tx_info[0],
-                    tx_info[1],
-                    tx_info[2],
-                    iedb_id
-                ]
-                for i in range(9, len(mutation)):
-                    out_line.append(str(mutation[i]))
-                print("\t".join(out_line), file=output_stream)
-            else:
-                # Epitope results from multiple transcripts
-                mutation_dict = collections.defaultdict(list)
-                # Get binding score info
-                ep_scores = []
-                for i in range(9, len(neoepitopes[epitope][0])):
-                    ep_scores.append(neoepitopes[epitope][0][i])
-                # Get variant info
-                for mut in neoepitopes[epitope]:
-                    if mut[2] == "":
-                        ref = "*"
-                    else:
-                        ref = mut[2]
-                    if mut[3] == "":
-                        alt = "*"
-                    else:
-                        alt = mut[3]
-                    if mut[5] is None:
-                        vaf = "NA"
-                    else:
-                        vaf = str(mut[5])
-                    mutation_dict[
-                        (mut[0], mut[1], ref, alt, mut[4], vaf, mut[6])
-                    ].append([mut[7], mut[8]])
-                mutation_list = sorted(list(mutation_dict.keys()))
-                # Get transcript/gene info 
-                for mut in mutation_list:
-                    transcripts = [str(x[1]) for x in mutation_dict[mut]]
-                    tx_types = []
-                    gene_ids = []
-                    gene_names = []
-                    for tx in transcripts:
-                        tx_types.append(tx_dict[tx][0])
-                        gene_ids.append(tx_dict[tx][1])
-                        gene_names.append(tx_dict[tx][2])
-                    out_line = [
-                        epitope,
-                        mut[0],
-                        str(mut[1]),
-                        mut[2],
-                        mut[3],
-                        mut[4],
-                        mut[5],
-                        mut[6],
-                        ";".join([str(x[0]) for x in mutation_dict[mut]]),
-                        ";".join(transcripts),
-                        ";".join(tx_types),
-                        ";".join(gene_ids),
-                        ";".join(gene_names),
-                        iedb_id
-                    ]
-                    for score in ep_scores:
-                        out_line.append(str(score))
-                    print("\t".join(out_line), file=output_stream)
+                    row["VAF"] = str(mutation[5])
+                row["Paired_normal_epitope"] = mutation[6]
+                row["Warnings"] = ';'.join([extra[0] for extra in mutation_dict[mutation]])
+                row["Count_in_normal"] = mutation[7]
+                # row["Haplotype"] = mutation[9]
+
+                # Add transcript data
+                transcripts =  [extra[1] for extra in mutation_dict[mutation]]
+                tx_types = []
+                gene_ids = []
+                gene_names = []
+                for tx in transcripts:
+                    tx_types.append(tx_dict[tx][0])
+                    gene_ids.append(tx_dict[tx][1])
+                    gene_names.append(tx_dict[tx][2])
+                row["Transcript_ID"] = ';'.join(transcripts)
+                row["Transcript_type"] = ';'.join(tx_types)
+                row["Gene_ID"] = ';'.join(gene_ids)
+                row["Gene_name"] = ';'.join(gene_names)
+
+                print(*[row[col] for col in headers], sep="\t", file=output_stream)
     finally:
         if output_stream is not sys.stdout:
             output_stream.close()
