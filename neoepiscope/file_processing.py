@@ -49,6 +49,7 @@ import pickle
 import datetime
 from .version import version_number
 from intervaltree import Interval, IntervalTree
+import uuid
 
 neoepiscope_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -634,7 +635,7 @@ def write_results(output_file, hla_alleles, neoepitopes, tool_dict, tx_dict):
             "Gene_name",
             "IEDB_ID",
             "Count_in_normal",
-            # "Haplotype"
+            "Full_sequence"
         ]
         for allele in hla_alleles:
             for tool in sorted(tool_dict.keys()):
@@ -651,21 +652,28 @@ def write_results(output_file, hla_alleles, neoepitopes, tool_dict, tx_dict):
             # for i in range(9, len(neoepitopes[epitope][0])):
             #     ep_scores.append(neoepitopes[epitope][0][i])
 
-            # Find relevant IEDB IDs for epitope
-            if epitope in epitope_to_iedb:
-                iedb_id = ",".join(list(epitope_to_iedb[epitope]))
-            else:
-                possible_ids = set()
-                for regex in ambiguous_epitope_to_iedb:
-                    if fullmatch(regex, epitope) is not None:
-                        possible_ids.update(ambiguous_epitope_to_iedb[regex])
-                if len(possible_ids) > 0:
-                    iedb_id = ",".join(list(possible_ids))
-                else:
-                    iedb_id = "NA"
+            # Find relevant IEDB IDs for epitope, not used at the moment 
+            # if epitope in epitope_to_iedb:
+            #     iedb_id = ",".join(list(epitope_to_iedb[epitope]))
+            # else:
+            #     possible_ids = set()
+            #     for regex in ambiguous_epitope_to_iedb:
+            #         if fullmatch(regex, epitope) is not None:
+            #             possible_ids.update(ambiguous_epitope_to_iedb[regex])
+            #     if len(possible_ids) > 0:
+            #         iedb_id = ",".join(list(possible_ids))
+            #     else:
+            #         iedb_id = "NA"
+
             mutation_dict = collections.defaultdict(list)
             for m in neoepitopes[epitope]:
-                mutation_dict[(m[0:7])+(m[8],)].append([m[7], m[9]])
+                key_tuple = (m[0:7])+(m[8], m[9]) # chr, pos, ref, alt, type, vaf, normal, count, full
+                value = [m[7], m[10]] # warnings, [transcript stuff]
+                if (key_tuple in mutation_dict) and (mutation_dict[key_tuple][0][1] == m[9]):
+                    # If mutation is from the same transcript, don't merge
+                    key_tuple = key_tuple + (uuid.uuid4(),)
+                mutation_dict[key_tuple].append(value)
+
             for mutation in mutation_dict:
                 row["Chromosome"] = mutation[0]
                 row["Pos"] = str(mutation[1])
@@ -685,7 +693,7 @@ def write_results(output_file, hla_alleles, neoepitopes, tool_dict, tx_dict):
                 row["Paired_normal_epitope"] = mutation[6]
                 row["Warnings"] = ';'.join([extra[0] for extra in mutation_dict[mutation]])
                 row["Count_in_normal"] = mutation[7]
-                # row["Haplotype"] = mutation[9]
+                # row["Full_sequence"] = mutation[8] # not used at the moment 
 
                 # Add transcript data
                 transcripts =  [extra[1] for extra in mutation_dict[mutation]]

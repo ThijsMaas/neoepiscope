@@ -2465,7 +2465,7 @@ class Transcript(object):
                 )
             for coords in epitope_coords:
                 # Added mutated haploype for neopitope
-                # mut_haplotype = protein[coords[0] : coords[1]]
+                full_sequence = protein[coords[0] : coords[1]]
                 peptides = kmerize_peptide(
                     protein[coords[0] : coords[1]], min_size=size, max_size=size
                 )
@@ -2495,11 +2495,10 @@ class Transcript(object):
                                     mutation_data + (pair[1],) + transcript_warnings
                                 )
                             # Added uniqueness parameter for neoepitope
-                            mutation_data = mutation_data + (peptides_ref.count(pair[0]), )
+                            mutation_data = mutation_data + (peptides_ref.count(pair[0]), full_sequence)
                             peptide_seqs[pair[0]].append(mutation_data)
                         peptide_seqs[pair[0]] = list(set(peptide_seqs[pair[0]]))
                 else:
-                    peptides = list(set(peptides).difference(peptides_ref))
                     for pep in peptides:
                         if len(coords[4]) == 2 and type(coords[4][0]) == list:
                             # Dealing with peptide resulting from hybrid interval
@@ -2518,7 +2517,7 @@ class Transcript(object):
                                     mutation_data + ("NA",) + transcript_warnings
                                 )
                             # Added uniqueness parameter for neoepitope
-                            mutation_data = mutation_data + (peptides_ref.count(pep), )
+                            mutation_data = mutation_data + (peptides_ref.count(pep), full_sequence)
                             peptide_seqs[pep].append(mutation_data)
                         peptide_seqs[pep] = list(set(peptide_seqs[pep]))
         if not return_protein:
