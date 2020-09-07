@@ -49,7 +49,6 @@ import pickle
 import datetime
 from .version import version_number
 from intervaltree import Interval, IntervalTree
-import uuid
 
 neoepiscope_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -677,9 +676,9 @@ def write_results(output_file, hla_alleles, neoepitopes, tool_dict, tx_dict,
             for m in neoepitopes[epitope]:
                 key_tuple = (m[0:7])+(m[8], m[9]) # chr, pos, ref, alt, type, vaf, normal, count, full
                 value = [m[7], m[10]] # warnings, [transcript stuff]
-                if (key_tuple in mutation_dict) and (mutation_dict[key_tuple][0][1] == m[9]):
-                    # If mutation is from the same transcript, don't merge
-                    key_tuple = key_tuple + (uuid.uuid4(),)
+                # if (key_tuple in mutation_dict) and (mutation_dict[key_tuple][0][1] == m[9]):
+                #     # If mutation is from the same transcript, don't merge
+                #     key_tuple = key_tuple + (uuid.uuid4(),)
                 mutation_dict[key_tuple].append(value)
 
             for mutation in mutation_dict:

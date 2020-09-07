@@ -2575,7 +2575,8 @@ class Transcript(object):
                             # Added uniqueness parameter for neoepitope
                             mutation_data = mutation_data + (peptides_ref.count(pair[0]), full_sequence)
                             peptide_seqs[pair[0]].append(mutation_data)
-                        peptide_seqs[pair[0]] = list(set(peptide_seqs[pair[0]]))
+                        ## to remove neoepitope dups for a mutation
+                        # peptide_seqs[pair[0]] = list(set(peptide_seqs[pair[0]])) 
                 else:
                     for pep in peptides:
                         if len(coords[4]) == 2 and type(coords[4][0]) == list:
@@ -2597,7 +2598,8 @@ class Transcript(object):
                             # Added uniqueness parameter for neoepitope
                             mutation_data = mutation_data + (peptides_ref.count(pep), full_sequence)
                             peptide_seqs[pep].append(mutation_data)
-                        peptide_seqs[pep] = list(set(peptide_seqs[pep]))
+                        ## to remove neoepitope dups for a mutation
+                        # peptide_seqs[pep] = list(set(peptide_seqs[pep]))
         if not return_protein:
             # return list of unique neoepitope sequences
             return peptide_seqs
